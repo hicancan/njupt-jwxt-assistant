@@ -14,12 +14,9 @@ export default defineConfig({
     },
     modules: ['@wxt-dev/module-react'],
     runner: {
-        startUrls: ["https://jwxt.njupt.edu.cn/xs_main.aspx"]
+        startUrls: ['https://jwxt.njupt.edu.cn/xs_main.aspx']
     },
     vite: () => ({
-        plugins: [
-            tailwindcss() as any,
-        ],
+        plugins: [tailwindcss()],
     }),
 });
-

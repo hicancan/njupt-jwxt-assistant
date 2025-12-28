@@ -35,7 +35,7 @@ export const credentialsItem = storage.defineItem<Credentials>('local:credential
     defaultValue: DEFAULT_CREDENTIALS,
 });
 
-function useWxtStorage<T>(item: WxtStorageItem<T, any>): [T | null, (val: T) => Promise<void>] {
+function useWxtStorage<T>(item: WxtStorageItem<T, Record<string, unknown>>): [T | null, (val: T) => Promise<void>] {
     const [value, setValue] = useState<T | null>(null);
 
     useEffect(() => {

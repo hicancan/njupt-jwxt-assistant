@@ -13,7 +13,6 @@ const evalStateItem = storage.defineItem<EvalState>('local:evalState', {
 });
 
 const Evaluator = () => {
-    // Basic local state for UI updates
     const [evalState, setEvalState] = useState<EvalState>({ isRunning: false, currentIndex: 0 })
     const [config] = useConfig()
     const [status, setStatus] = useState("Ready")
@@ -22,7 +21,6 @@ const Evaluator = () => {
     const isMountedRef = useRef(true)
     const configRef = useRef(config)
 
-    // Sync state with storage
     useEffect(() => {
         evalStateItem.getValue().then(setEvalState);
         const unwatch = evalStateItem.watch(setEvalState);
@@ -97,7 +95,6 @@ const Evaluator = () => {
 
         const nextState: EvalState = { isRunning: true, currentIndex: idx + 1 }
 
-        // Use wxt storage
         await evalStateItem.setValue(nextState);
         if (isMountedRef.current) {
             document.getElementById("Button1")?.click()
