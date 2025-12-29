@@ -15,7 +15,7 @@ const evalStateItem = storage.defineItem<EvalState>('local:evalState', {
 const Evaluator = () => {
     const [evalState, setEvalState] = useState<EvalState>({ isRunning: false, currentIndex: 0 })
     const [config] = useConfig()
-    const [status, setStatus] = useState("Ready")
+    const [status, setStatus] = useState("就绪")
     const [progress, setProgress] = useState(0)
     const [showConfirm, setShowConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null)
     const isMountedRef = useRef(true)
@@ -56,7 +56,7 @@ const Evaluator = () => {
 
         if (idx >= total) {
             if (isMountedRef.current) {
-                setStatus("All Completed!")
+                setStatus("全部完成！")
                 updateEvalState({ isRunning: false, currentIndex: idx })
 
                 if (configRef.current?.autoSubmit) {
@@ -73,7 +73,7 @@ const Evaluator = () => {
 
         if (pjkc.selectedIndex !== idx) {
             if (isMountedRef.current) {
-                setStatus(`Switching to course ${idx + 1}...`)
+                setStatus(`正在切换第 ${idx + 1} 门课程...`)
             }
             pjkc.selectedIndex = idx
 
@@ -83,7 +83,7 @@ const Evaluator = () => {
         }
 
         if (isMountedRef.current) {
-            setStatus(`Rating course ${idx + 1}...`)
+            setStatus(`正在评价第 ${idx + 1} 门课程...`)
         }
         fillRatings(configRef.current?.comment || "")
 

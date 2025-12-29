@@ -12,7 +12,7 @@
 
 ### 环境要求
 
-- Node.js 18+
+- Node.js 22+ (LTS)
 - pnpm / npm / yarn
 
 ### 首次开发
