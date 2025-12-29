@@ -71,7 +71,6 @@ entrypoints/
     ├── main.tsx
     └── Options.tsx
 utils/
-├── cn.ts                     # Tailwind 合并工具
 ├── hooks.ts                  # WXT Storage Hooks
 ├── ics.ts                    # ICS 日历生成
 └── parser.ts                 # 课表解析 (Zod 验证)

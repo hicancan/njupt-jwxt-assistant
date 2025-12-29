@@ -3,6 +3,9 @@ import { useConfig, type Config, DEFAULT_CONFIG } from "@/utils/hooks"
 import { parseSchedule, type Course } from "@/utils/parser"
 import { generateICS } from "@/utils/ics"
 import { Download, Loader2, Calendar, X } from "lucide-react"
+import { z } from "zod"
+
+const TimeConfigSchema = z.record(z.coerce.number(), z.object({ s: z.string(), e: z.string() }))
 
 const ScheduleExporter = () => {
     const [appConfig, setAppConfig] = useConfig()
@@ -28,11 +31,8 @@ const ScheduleExporter = () => {
         try {
             let timeConfig: Record<number, { s: string; e: string }> | undefined
             if (appConfig?.timeJson) {
-                try {
-                    timeConfig = JSON.parse(appConfig.timeJson) as Record<number, { s: string; e: string }>
-                } catch {
-                    timeConfig = undefined
-                }
+                const parsed = TimeConfigSchema.safeParse(JSON.parse(appConfig.timeJson))
+                if (parsed.success) timeConfig = parsed.data
             }
 
             const ics = generateICS(courses, startDate, timeConfig)
