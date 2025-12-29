@@ -1,5 +1,5 @@
 import { storage, type WxtStorageItem } from 'wxt/storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 export interface Config {
     comment: string;
@@ -37,17 +37,27 @@ export const credentialsItem = storage.defineItem<Credentials>('local:credential
 
 function useWxtStorage<T>(item: WxtStorageItem<T, Record<string, unknown>>): [T | null, (val: T) => Promise<void>] {
     const [value, setValue] = useState<T | null>(null);
+    const itemRef = useRef(item);
+    itemRef.current = item;
 
     useEffect(() => {
-        item.getValue().then(setValue);
-        const unwatch = item.watch(setValue);
-        return () => unwatch();
-    }, [item]);
+        let mounted = true;
+        itemRef.current.getValue().then((v) => {
+            if (mounted) setValue(v);
+        });
+        const unwatch = itemRef.current.watch((v) => {
+            if (mounted) setValue(v);
+        });
+        return () => {
+            mounted = false;
+            unwatch();
+        };
+    }, []);
 
-    const setStorageValue = async (val: T) => {
-        await item.setValue(val);
+    const setStorageValue = useCallback(async (val: T) => {
+        await itemRef.current.setValue(val);
         setValue(val);
-    };
+    }, []);
 
     return [value, setStorageValue];
 }

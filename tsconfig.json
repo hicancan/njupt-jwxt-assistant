@@ -19,6 +19,7 @@
   "include": [
     "entrypoints/**/*",
     "utils/**/*",
+    "assets/**/*",
     "wxt.config.ts"
   ],
   "exclude": [

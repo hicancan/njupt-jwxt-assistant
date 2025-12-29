@@ -39,9 +39,7 @@ const Evaluator = () => {
         }
     }, [])
 
-    useEffect(() => {
-        configRef.current = config
-    }, [config])
+    configRef.current = config
 
     const processEvaluation = useCallback(async () => {
         if (!evalState.isRunning) return
