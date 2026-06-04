@@ -19,9 +19,7 @@ export function ScheduleExporter() {
   // Load saved startDate from chrome.storage on mount
   useEffect(() => {
     (async () => {
-      const raw = await new Promise<Record<string, unknown>>((resolve) =>
-        chrome.storage.local.get('njupt-schedule:startDate', resolve),
-      );
+      const raw = await chrome.storage.local.get(['njupt-schedule:startDate']);
       const saved = raw['njupt-schedule:startDate'] as string | undefined;
       if (!saved) {
         setDateInput(getDefaultDate());
@@ -60,9 +58,7 @@ export function ScheduleExporter() {
 
   const handleExport = useCallback(async () => {
     setLoading(true);
-    const saved = await new Promise<Record<string, unknown>>((resolve) =>
-      chrome.storage.local.get('njupt-schedule:startDate', resolve),
-    );
+    const saved = await chrome.storage.local.get(['njupt-schedule:startDate']);
     const startDate = saved['njupt-schedule:startDate'] as string | undefined;
     if (!startDate) {
       setDateInput(getDefaultDate());

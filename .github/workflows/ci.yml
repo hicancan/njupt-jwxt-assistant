@@ -21,6 +21,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Prepare WXT types
+        run: npm run prepare:wxt
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -54,6 +57,7 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: npm run prepare:wxt
       - run: npm run build
       - run: npm run zip
 
