@@ -69,7 +69,10 @@ export function EvalPanelApp() {
       useEvalStore.getState().setLoopStatus('running');
       useEvalStore.getState().setCurrentCourseIndex(ls.currentIndex);
     } else if (ssStatus === 'done') {
-      useEvalStore.getState().setLoopStatus('done');
+      // Only show done on eval pages; clear stale status elsewhere
+      useEvalStore.getState().setLoopStatus(
+        (pt === 'satisfaction' || pt === 'teaching-eval') ? 'done' : 'idle'
+      );
     } else if (ssStatus === 'error') {
       useEvalStore.getState().setLoopStatus('error');
       useEvalStore.getState().setErrorMessage(getEvalError());

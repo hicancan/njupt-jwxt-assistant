@@ -1,18 +1,18 @@
 import type { Course, EvalOption, EvalPage, EvalSelect, PageType, TeacherGroup } from '../lib/types';
 
+const IFRAME_PAGES = ['xs_jsmydpj.aspx', 'xsjxpj.aspx', 'xskbcx.aspx'];
+
 /**
- * Find the iframe containing an evaluation page, if any.
- * NJUPT loads evaluation pages inside iframes on xs_main.aspx.
+ * Find the iframe containing a known NJUPT content page (eval / schedule / etc).
+ * NJUPT loads content pages inside iframes on xs_main.aspx.
  */
 export function findEvalIframe(): HTMLIFrameElement | null {
   const iframes = document.querySelectorAll('iframe');
   for (const iframe of iframes) {
     try {
-      // Check src attribute first (static), then contentWindow (current URL after navigation)
       const src = (iframe as HTMLIFrameElement).src.toLowerCase();
       const cwUrl = (iframe as HTMLIFrameElement).contentWindow?.location.href.toLowerCase() || '';
-      if (src.includes('xs_jsmydpj.aspx') || src.includes('xsjxpj.aspx') ||
-          cwUrl.includes('xs_jsmydpj.aspx') || cwUrl.includes('xsjxpj.aspx')) {
+      if (IFRAME_PAGES.some(p => src.includes(p) || cwUrl.includes(p))) {
         return iframe as HTMLIFrameElement;
       }
     } catch {
