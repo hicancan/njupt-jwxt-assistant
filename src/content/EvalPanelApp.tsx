@@ -268,6 +268,8 @@ export function EvalPanelApp() {
                 onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xs_jsmydpj.aspx?xh=${xh}&gnmkdm=N121801`; }}>前往满意度调查</button>
               <button className="w-full py-2 rounded font-medium text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                 onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xsjxpj.aspx?xh=${xh}&gnmkdm=N12141`; }}>前往教学评价</button>
+              <button className="w-full py-2 rounded font-medium text-sm text-white bg-green-600 hover:bg-green-700 transition-colors"
+                onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xskbcx.aspx?xh=${xh}&gnmkdm=N121603`; }}>前往学生课表</button>
             </div>
           )}
 
