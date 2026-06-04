@@ -3,6 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/v/release/hicancan/njupt-jwxt-assistant?color=blue&label=release" alt="Release">
   <img src="https://img.shields.io/badge/tests-22%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/github/actions/workflow/status/hicancan/njupt-jwxt-assistant/ci.yml?branch=main&label=ci" alt="CI">
   <img src="https://img.shields.io/badge/platform-Chrome%20MV3-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-ISC-lightgrey" alt="License">
   <img src="https://img.shields.io/badge/WXT-0.20-ff6b35" alt="WXT">
