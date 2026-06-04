@@ -12,6 +12,11 @@ describe('detectPageType', () => {
     expect(detectPageType(url)).toBe('teaching-eval');
   });
 
+  it('detects schedule page', () => {
+    const url = 'http://jwxt.njupt.edu.cn/xskbcx.aspx?xh=B24040213&gnmkdm=N121603';
+    expect(detectPageType(url)).toBe('schedule');
+  });
+
   it('detects dashboard page', () => {
     const url = 'http://jwxt.njupt.edu.cn/xs_main.aspx?xh=B24040213';
     expect(detectPageType(url)).toBe('dashboard');

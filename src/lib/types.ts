@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Page types the extension recognizes */
-export type PageType = 'satisfaction' | 'teaching-eval' | 'dashboard' | 'unknown';
+export type PageType = 'satisfaction' | 'teaching-eval' | 'dashboard' | 'schedule' | 'unknown';
 
 /** A single Likert-scale select element on the evaluation page */
 export interface EvalSelect {

@@ -3,11 +3,13 @@ import { useEvalStore } from './store';
 import { parseEvalPage } from './dom-analyzer';
 import { detectEffectivePageType } from './page-detector';
 import { startEvalLoop, maybeResumeEvalLoop, getLoopState, clearLoopState, getEvalStatus, getEvalError, clearEvalStatus } from './eval-loop';
+import { ScheduleExporter } from '../schedule/ScheduleExporter';
 
 const PAGE_LABELS: Record<string, string> = {
   satisfaction: '满意度调查',
   'teaching-eval': '教学评价',
   dashboard: '教务首页',
+  schedule: '学生个人课表',
   unknown: '非评价页面',
 };
 
@@ -265,6 +267,8 @@ export function EvalPanelApp() {
                 onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xsjxpj.aspx?xh=${xh}&gnmkdm=N12141`; }}>前往教学评价</button>
             </div>
           )}
+
+          {pageType === 'schedule' && <ScheduleExporter />}
 
           {pageType === 'unknown' && <div className="text-xs text-gray-400 text-center">请导航至教务系统页面</div>}
         </div>

@@ -15,6 +15,10 @@ export function detectPageType(url: string): PageType {
     return 'teaching-eval';
   }
 
+  if (lower.includes('xskbcx.aspx')) {
+    return 'schedule';
+  }
+
   if (lower.includes('xs_main.aspx')) {
     return 'dashboard';
   }
