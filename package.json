@@ -1,38 +1,40 @@
 {
-    "name": "njupt-jwxt-assistant",
-    "displayName": "南邮教务助手",
-    "version": "1.0.0",
-    "description": "南邮教务系统增强：自动评教、课表导出 (WXT + React)",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "dev": "wxt",
-        "build": "wxt build",
-        "zip": "wxt zip",
-        "compile": "tsc --noEmit",
-        "postinstall": "wxt prepare"
-    },
-    "dependencies": {
-        "@tailwindcss/vite": "^4.1.18",
-        "clsx": "^2.1.1",
-        "lucide-react": "0.410.0",
-        "react": "^19.2.3",
-        "react-dom": "^19.2.3",
-        "react-draggable": "4.4.6",
-        "tailwind-merge": "^2.6.0",
-        "tailwindcss": "^4.1.18",
-        "zod": "^3.25.76"
-    },
-    "devDependencies": {
-        "@ianvs/prettier-plugin-sort-imports": "4.1.1",
-        "@types/chrome": "0.0.304",
-        "@types/node": "22.15.29",
-        "@types/react": "19.1.6",
-        "@types/react-dom": "19.1.5",
-        "@wxt-dev/module-react": "^1.1.5",
-        "prettier": "3.4.2",
-        "typescript": "^5.9.3",
-        "vite": "^6.4.1",
-        "wxt": "^0.19.29"
-    }
+  "name": "njupt-jwxt-assistant",
+  "displayName": "南邮教务助手",
+  "version": "2.0.0",
+  "description": "南邮正方教务系统增强 — 一键自动评教 (满意度调查 + 教学评价)",
+  "private": true,
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "prepare:wxt": "wxt prepare",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": ["browser-extension", "wxt", "react", "njupt"],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "4.4.3",
+    "zustand": "5.0.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.0",
+    "@types/chrome": "0.1.42",
+    "@types/node": "25.9.1",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "@wxt-dev/module-react": "1.2.2",
+    "jsdom": "29.1.1",
+    "tailwindcss": "4.3.0",
+    "typescript": "6.0.3",
+    "vite": "8.0.14",
+    "vitest": "4.1.7",
+    "wxt": "0.20.26"
+  }
 }

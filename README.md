@@ -1,96 +1,104 @@
-# 南邮教务助手 (NJUPT JWXT Assistant)
+# NJUPT 教务助手
 
-> 基于 WXT + React + TypeScript + Tailwind CSS 的南邮教务系统增强扩展
+> Chrome MV3 浏览器扩展 — 南邮正方教务系统一键自动评教
 
-## ✨ 功能
+[![Release](https://img.shields.io/badge/release-v2.0.0-blue)](https://github.com/hicancan/njupt-jwxt-assistant/releases/tag/v2.0.0)
+[![Tests](https://img.shields.io/badge/tests-21%20passed-green)](https://github.com/hicancan/njupt-jwxt-assistant)
+[![License](https://img.shields.io/badge/license-ISC-lightgrey)](LICENSE)
 
-- 🔐 **自动登录** - 自动填充学号和密码
-- 📝 **一键评教** - 自动完成课程评教，支持随机打分避免模式检测
-- 📅 **课表导出** - 解析课表并导出为 ICS 日历格式，支持导入到各类日历应用
+## 功能
 
-## 🚀 开发指南
+- **满意度调查（课程评价）** — 一键自动完成 7 门课的 Likert 量表填写
+- **教学评价（教师评价）** — 一键自动完成每门课的教师评分
+- **自适应评分量表** — 满意度调查（完全认同/相对认同/...）和教学评价（好/较好/...）自动适配
+- **智能策略** — 每位教师随机选 1 个次高分，其余最高分，避免全部满分被识别
+- **跨页面连续执行** — 保存后页面刷新自动继续，无需人工干预
+- **可拖拽面板 + 悬浮球** — 面板可拖动、可折叠为悬浮球，不遮挡页面
+- **弹窗屏蔽** — 自动拦截 `alert`/`confirm`，防止保存确认弹窗打断流程
 
-### 环境要求
+## 技术栈
 
-- Node.js 22+ (LTS)
-- pnpm / npm / yarn
+| 层 | 选型 |
+|---|------|
+| 框架 | WXT 0.20 |
+| UI | React 19 + Tailwind CSS 4 (ShadowRoot 隔离) |
+| 状态 | Zustand 5 |
+| 校验 | Zod 4 |
+| 语言 | TypeScript 6 |
+| 测试 | Vitest 4 + jsdom |
 
-### 首次开发
+## 安装
 
-> ⚠️ **重要提示**: 首次克隆项目后，必须先运行开发服务器。WXT 会在首次运行时生成必要的类型定义文件 (`.wxt/`)，这些文件被 TypeScript 配置所引用。
+### 从源码构建
 
 ```bash
-# 1. 安装依赖
+git clone https://github.com/hicancan/njupt-jwxt-assistant.git
+cd njupt-jwxt-assistant
 npm install
-
-# 2. 启动开发服务器 (必须首先执行)
-npm run dev
-
-# 3. 现在可以进行类型检查了
-npm run compile
+npm run build
 ```
 
-### 常用命令
+然后：
+1. 打开 Chrome → `chrome://extensions/`
+2. 开启「开发者模式」
+3. 点击「加载已解压的扩展程序」
+4. 选择 `.output/chrome-mv3/` 目录
+
+### 从 Release 安装
+
+1. 下载 [最新 Release](https://github.com/hicancan/njupt-jwxt-assistant/releases) 的 `.zip` 文件
+2. 解压到任意目录
+3. Chrome → `chrome://extensions/` → 加载已解压的扩展程序 → 选择解压目录
+
+## 使用方法
+
+1. 用 Chrome 打开教务系统登录并进入首页
+2. 右上角出现 **NJUPT 教务助手** 面板
+3. 在教务首页点击「前往满意度调查」或「前往教学评价」
+4. 进入评价页面后点击「一键满意度」或「一键评价」
+5. 等待自动完成（页面会刷新，请勿操作）
+6. 全部完成后手动点击页面底部的「提交」按钮
+
+### 面板控制
+
+| 操作 | 方式 |
+|------|------|
+| 拖动 | 按住标题栏拖动 |
+| 折叠 | 点击标题栏 `—` 按钮 |
+| 展开 | 点击蓝色悬浮球 `助` |
+| 停止 | 运行中点击红色「停止」按钮 |
+| 重置 | 完成后点击「重置」 |
+| 修改评语 | 直接在面板的评语模板框中编辑 |
+
+## 项目结构
+
+```
+src/
+├── content/
+│   ├── EvalPanelApp.tsx       # React 侧边面板 UI（可拖拽 + 悬浮球）
+│   ├── page-detector.ts       # URL + iframe 页面类型识别
+│   ├── dom-analyzer.ts        # pjkc / DataGrid DOM 解析 + 教师分组
+│   ├── eval-strategy.ts       # 自适应评分策略引擎
+│   ├── dom-fill.ts            # DOM 填充操作（select / textarea / button）
+│   ├── eval-loop.ts           # 评价循环编排（sessionStorage 持久化）
+│   └── store.ts               # Zustand 状态管理
+├── lib/
+│   ├── types.ts               # 类型定义 + Zod Schema
+│   └── storage.ts             # chrome.storage.local 持久化
+└── styles/
+    └── app.css                # Tailwind
+```
+
+## 开发
 
 ```bash
-# 开发模式 (热重载)
-npm run dev
-
-# 生产构建
-npm run build
-
-# 打包为 .zip
-npm run zip
+npm run dev        # 开发模式（热更新）
+npm run build      # 生产构建
+npm run test       # 运行测试（21 tests）
+npm run typecheck  # TypeScript 类型检查
+npm run check      # 全部检查（typecheck + test + build）
 ```
 
-### 加载扩展
+## License
 
-1. 运行 `npm run dev`
-2. 打开 Chrome，访问 `chrome://extensions/`
-3. 启用"开发者模式"
-4. 点击"加载已解压的扩展程序"
-5. 选择 `.output/chrome-mv3-dev` 目录
-
-## 📁 项目结构
-
-```
-entrypoints/
-├── background.ts             # Service Worker
-├── login.content.ts          # 登录页面自动填充
-├── dashboard.content/        # 主面板 (xs_main.aspx)
-│   ├── index.tsx
-│   └── Dashboard.tsx
-├── evaluator.content/        # 评教页面 (xsjxpj.aspx)
-│   ├── index.tsx
-│   └── Evaluator.tsx
-├── schedule.content/         # 课表导出 (xskbcx.aspx)
-│   ├── index.tsx
-│   └── ScheduleExporter.tsx
-└── options/                  # 设置页面
-    ├── index.html
-    ├── main.tsx
-    └── Options.tsx
-utils/
-├── hooks.ts                  # WXT Storage Hooks
-├── ics.ts                    # ICS 日历生成
-└── parser.ts                 # 课表解析 (Zod 验证)
-assets/
-└── style.css                 # Tailwind CSS 主题
-```
-
-## ⚙️ 配置说明
-
-在扩展设置页面可以配置：
-
-| 配置项 | 说明 |
-|--------|------|
-| 学号 | 用于自动登录和跳转 |
-| 密码 | 可选，用于自动登录 |
-| 评教语 | 自动填写的评教评语 |
-| 操作延迟 | 评教操作间隔时间 (ms) |
-| 学期开始日期 | 用于计算课表日历 |
-| 课程时间表 | 自定义每节课时间 (JSON) |
-
-## 📄 License
-
-MIT
+ISC
