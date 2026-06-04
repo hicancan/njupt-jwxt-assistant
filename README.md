@@ -76,13 +76,40 @@ npm run build
 
 ## 使用流程
 
+```mermaid
+flowchart LR
+    A[教务首页<br/>登录后自动出现面板] -->|前往满意度调查| B[满意度调查页<br/>7 门课程]
+    A -->|前往教学评价| C[教学评价页<br/>7 门课程]
+    A -->|前往学生课表| D[课表页面<br/>导出 ICS]
+
+    B -->|一键满意度| E[自动循环<br/>逐门填表 → 保存 → 刷新 → 继续]
+    C -->|一键评价| E
+
+    E -->|全部完成| F[手动点击提交]
+    D -->|导出课表 ICS| G[下载 .ics 文件<br/>导入 Apple / Google 日历]
 ```
-教务首页                    评价页面                    完成
-┌──────────┐   点击    ┌──────────────┐   自动    ┌──────────┐
-│ 前往满意度  │ ──────→ │ 一键满意度     │ ──────→ │ 全部完成   │
-│ 前往教学    │         │ 7/7 自动循环   │          │ 手动点提交 │
-│ 前往课表    │         └──────────────┘          └──────────┘
-└──────────┘
+
+### 评教自动循环
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant P as 面板
+    participant S as sessionStorage
+    participant J as 教务服务器
+
+    U->>P: 点击"一键满意度"
+    P->>S: 写入循环状态 {currentIndex:0}
+    P->>J: __doPostBack 选择课程0
+    J-->>P: 页面刷新
+    P->>S: 读取状态 {currentIndex:0}
+    P->>J: 填充 Likert + 保存
+    J-->>P: 页面刷新
+    P->>S: 读取状态 {currentIndex:1}
+    P->>J: __doPostBack 选择课程1
+    Note over P,S: ... 重复 7 次 ...
+    P->>S: 清除循环状态 → done
+    P->>U: 显示"全部完成"
 ```
 
 | 操作 | 方式 |
