@@ -2,19 +2,19 @@ import { parseEvalPage, getEvalDocument } from './dom-analyzer';
 import { computeFillActions } from './eval-strategy';
 import { applyFillActions, clickSave, selectCourse, writeComment } from './dom-fill';
 import { detectEffectivePageType } from './page-detector';
+import type { PageType } from '../lib/types';
 
 const LOOP_KEY = 'njupt-eval-loop';
-const STATUS_KEY = 'njupt-eval-status'; // 'running' | 'done' | 'error'
+const STATUS_KEY = 'njupt-eval-status';
 const ERROR_KEY = 'njupt-eval-error';
 
 interface LoopState {
-  pageType: string;
+  pageType: PageType;
   comment: string;
   currentIndex: number;
   totalCourses: number;
 }
 
-// ---- sessionStorage helpers ----
 function ssGet(key: string): string | null {
   try { return sessionStorage.getItem(key); } catch { return null; }
 }
@@ -31,135 +31,128 @@ export function getLoopState(): LoopState | null {
 function setLoopState(state: LoopState): void { ssSet(LOOP_KEY, JSON.stringify(state)); }
 export function clearLoopState(): void { ssRemove(LOOP_KEY); }
 
-/** Returns the persistent eval status (survives page reloads) */
-export function getEvalStatus(): string {
-  return ssGet(STATUS_KEY) || 'idle';
-}
-export function getEvalError(): string {
-  return ssGet(ERROR_KEY) || '';
-}
-export function clearEvalStatus(): void {
-  ssRemove(STATUS_KEY);
-  ssRemove(ERROR_KEY);
-}
+export function getEvalStatus(): string { return ssGet(STATUS_KEY) || 'idle'; }
+export function getEvalError(): string { return ssGet(ERROR_KEY) || ''; }
+export function clearEvalStatus(): void { ssRemove(STATUS_KEY); ssRemove(ERROR_KEY); }
 
 function setStatus(status: string, error?: string): void {
   ssSet(STATUS_KEY, status);
   if (error) ssSet(ERROR_KEY, error); else ssRemove(ERROR_KEY);
 }
 
-let _resuming = false;
+// --- Re-entrancy guard (module-level: content scripts are per-page singletons) ---
+const guard = (() => {
+  let running = false;
+  return {
+    acquire() { if (running) return false; running = true; return true; },
+    release() { running = false; },
+    isRunning() { return running; },
+  };
+})();
 
-/**
- * Auto-resume a pending eval loop. Called on every page/iframe load.
- * Returns true if a cycle was queued.
- */
-export function maybeResumeEvalLoop(): boolean {
-  if (_resuming) return false;
+// --- Core loop ---
 
-  const state = getLoopState();
-  if (!state) return false;
+async function doOneEvalCycle(loopState: LoopState): Promise<void> {
+  const currentPage = loopState.currentIndex !== loopState.totalCourses
+    ? await ensureCourseSelected(loopState)
+    : parseEvalPage(loopState.pageType);
 
-  const currentType = detectEffectivePageType();
-  if (currentType !== state.pageType) return false;
-
-  const page = parseEvalPage(currentType);
-  if (page.courses.length === 0) return false;
-
-  if (state.currentIndex >= state.totalCourses) {
-    clearLoopState();
-    setStatus('done');
-    return false;
-  }
-
-  setStatus('running');
-  _resuming = true;
-  setTimeout(async () => {
-    try {
-      await doOneEvalCycle(state);
-    } catch (e) {
-      clearLoopState();
-      setStatus('error', e instanceof Error ? e.message : '评价出错');
-    } finally {
-      _resuming = false;
-    }
-  }, 500);
-  return true;
-}
-
-async function doOneEvalCycle(state: LoopState): Promise<void> {
-  const page = parseEvalPage(state.pageType as any);
-
-  if (state.currentIndex >= page.courses.length) {
-    clearLoopState();
-    setStatus('done');
-    return;
-  }
-
-  // Switch course via pjkc
-  if (page.currentCourseIndex !== state.currentIndex) {
-    selectCourse(state.currentIndex);
-    await new Promise<void>((resolve, reject) => {
-      const start = Date.now();
-      const check = () => {
-        const doc = getEvalDocument();
-        const pjkc = doc.getElementById('pjkc') as HTMLSelectElement | null;
-        if (pjkc && pjkc.selectedIndex === state.currentIndex &&
-            doc.querySelectorAll('select[id*="DataGrid1"]').length > 0) { resolve(); return; }
-        if (Date.now() - start > 15000) { reject(new Error('页面切换超时')); return; }
-        setTimeout(check, 300);
-      };
-      check();
-    });
-    const refreshed = parseEvalPage(state.pageType as any);
-    Object.assign(page, refreshed);
-  }
-
-  // Fill
-  const actions = computeFillActions(page.teacherGroups);
+  // Fill form
+  const actions = computeFillActions(currentPage.teacherGroups);
   applyFillActions(actions);
-  if (page.hasCommentBox && page.commentBoxId) {
-    writeComment(page.commentBoxId, state.comment);
+  if (currentPage.hasCommentBox && currentPage.commentBoxId) {
+    writeComment(currentPage.commentBoxId, loopState.comment);
   }
 
-  // Advance index
-  const nextIndex = state.currentIndex + 1;
-  if (nextIndex >= page.courses.length) {
+  // Advance index (check stop signal before writing)
+  const nextIndex = loopState.currentIndex + 1;
+  if (nextIndex >= currentPage.courses.length) {
     clearLoopState();
     setStatus('done');
   } else {
-    setLoopState({ ...state, currentIndex: nextIndex });
+    if (!getLoopState()) return; // stopped by user
+    setLoopState({ ...loopState, currentIndex: nextIndex });
   }
 
-  // Save → triggers page/iframe reload
-  if (page.saveButtonId) {
-    clickSave(page.saveButtonId);
+  // Save triggers page reload → maybeResume picks up next course
+  if (currentPage.saveButtonId) {
+    clickSave(currentPage.saveButtonId);
   } else {
     throw new Error('未找到保存按钮');
   }
 }
 
-export function startEvalLoop(comment: string): void {
-  clearEvalStatus();
-  const pageType = detectEffectivePageType();
-  const page = parseEvalPage(pageType);
+/** Switch course via pjkc dropdown, wait for postback, return fresh page parse. */
+async function ensureCourseSelected(loopState: LoopState): Promise<ReturnType<typeof parseEvalPage>> {
+  const page = parseEvalPage(loopState.pageType);
+  if (page.currentCourseIndex === loopState.currentIndex) return page;
 
-  if (page.courses.length === 0) {
-    throw new Error('未检测到课程列表');
+  selectCourse(loopState.currentIndex);
+  await new Promise<void>((resolve, reject) => {
+    const start = Date.now();
+    const check = () => {
+      const doc = getEvalDocument();
+      const pjkc = doc.getElementById('pjkc') as HTMLSelectElement | null;
+      if (pjkc && pjkc.selectedIndex === loopState.currentIndex &&
+          doc.querySelectorAll('select[id*="DataGrid1"]').length > 0) { resolve(); return; }
+      if (Date.now() - start > 15000) { reject(new Error('页面切换超时')); return; }
+      setTimeout(check, 300);
+    };
+    check();
+  });
+  return parseEvalPage(loopState.pageType);
+}
+
+// --- Public API ---
+
+/** Try to resume a pending eval loop. Called on every page/iframe load. */
+export function maybeResumeEvalLoop(): boolean {
+  if (!guard.acquire()) return false;
+
+  const loopState = getLoopState();
+  if (!loopState) { guard.release(); return false; }
+
+  const currentType = detectEffectivePageType();
+  if (currentType !== loopState.pageType) { guard.release(); return false; }
+
+  const page = parseEvalPage(currentType);
+  if (page.courses.length === 0) { guard.release(); return false; }
+
+  if (loopState.currentIndex >= loopState.totalCourses) {
+    clearLoopState();
+    setStatus('done');
+    guard.release();
+    return false;
   }
 
-  const state: LoopState = {
-    pageType,
-    comment,
-    currentIndex: page.currentCourseIndex,
-    totalCourses: page.courses.length,
-  };
-
-  setLoopState(state);
   setStatus('running');
-  _resuming = true;
-  doOneEvalCycle(state).catch((e) => {
-    clearLoopState();
-    setStatus('error', e instanceof Error ? e.message : '评价出错');
-  }).finally(() => { _resuming = false; });
+  setTimeout(async () => {
+    try {
+      await doOneEvalCycle(loopState);
+    } catch (e) {
+      clearLoopState();
+      setStatus('error', e instanceof Error ? e.message : '评价出错');
+    } finally {
+      guard.release();
+    }
+  }, 500);
+  return true;
+}
+
+export function startEvalLoop(comment: string): void {
+  clearEvalStatus();
+
+  const pageType = detectEffectivePageType();
+  const page = parseEvalPage(pageType);
+  if (page.courses.length === 0) throw new Error('未检测到课程列表');
+
+  setLoopState({ pageType, comment, currentIndex: page.currentCourseIndex, totalCourses: page.courses.length });
+  setStatus('running');
+
+  if (guard.acquire()) {
+    doOneEvalCycle(getLoopState()!).catch((e) => {
+      clearLoopState();
+      setStatus('error', e instanceof Error ? e.message : '评价出错');
+    }).finally(() => guard.release());
+  }
 }

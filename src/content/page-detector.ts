@@ -19,6 +19,10 @@ export function detectPageType(url: string): PageType {
     return 'schedule';
   }
 
+  if (lower.includes('xscj_gc.aspx') || lower.includes('xscjcx.aspx')) {
+    return 'grade';
+  }
+
   if (lower.includes('xs_main.aspx')) {
     return 'dashboard';
   }

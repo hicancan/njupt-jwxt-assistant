@@ -1,6 +1,6 @@
 import type { Course, EvalOption, EvalPage, EvalSelect, PageType, TeacherGroup } from '../lib/types';
 
-const IFRAME_PAGES = ['xs_jsmydpj.aspx', 'xsjxpj.aspx', 'xskbcx.aspx'];
+const IFRAME_PAGES = ['xs_jsmydpj.aspx', 'xsjxpj.aspx', 'xskbcx.aspx', 'xscj_gc.aspx'];
 
 /**
  * Find the iframe containing a known NJUPT content page (eval / schedule / etc).
@@ -37,14 +37,14 @@ export function getEvalDocument(): Document {
 /**
  * Find the course selector (#pjkc) in the given document.
  */
-export function findPjkcSelect(doc: Document = document): HTMLSelectElement | null {
+function findPjkcSelect(doc: Document = document): HTMLSelectElement | null {
   return doc.getElementById('pjkc') as HTMLSelectElement | null;
 }
 
 /**
  * Extract courses from the pjkc dropdown.
  */
-export function getCourses(pjkc: HTMLSelectElement): Course[] {
+function getCourses(pjkc: HTMLSelectElement): Course[] {
   return Array.from(pjkc.options).map((opt, i) => ({
     index: i,
     name: opt.text.trim(),
@@ -105,19 +105,19 @@ export function groupSelectsByTeacher(selects: EvalSelect[]): TeacherGroup[] {
   }));
 }
 
-export function findCommentBox(doc: Document = document): { id: string } | null {
+function findCommentBox(doc: Document = document): { id: string } | null {
   const el = doc.getElementById('pjxx') as HTMLTextAreaElement | null;
   if (el) return { id: el.id };
   return null;
 }
 
-export function findSaveButton(doc: Document = document): { id: string } | null {
+function findSaveButton(doc: Document = document): { id: string } | null {
   const el = doc.getElementById('Button1') as HTMLInputElement | null;
   if (el) return { id: el.id };
   return null;
 }
 
-export function findSubmitButton(doc: Document = document): { id: string } | null {
+function findSubmitButton(doc: Document = document): { id: string } | null {
   const el = doc.getElementById('Button2') as HTMLInputElement | null;
   if (el) return { id: el.id };
   return null;

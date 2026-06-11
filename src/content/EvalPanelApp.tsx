@@ -1,17 +1,55 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useEvalStore } from './store';
-import { parseEvalPage } from './dom-analyzer';
+import { parseEvalPage, findEvalIframe } from './dom-analyzer';
 import { detectEffectivePageType } from './page-detector';
 import { startEvalLoop, maybeResumeEvalLoop, getLoopState, clearLoopState, getEvalStatus, getEvalError, clearEvalStatus } from './eval-loop';
 import { ScheduleExporter } from '../schedule/ScheduleExporter';
+import { GradeExporter } from '../grade/GradeExporter';
 
-const PAGE_LABELS: Record<string, string> = {
-  satisfaction: '满意度调查',
-  'teaching-eval': '教学评价',
-  dashboard: '教务首页',
-  schedule: '学生个人课表',
-  unknown: '非评价页面',
-};
+/**
+ * Navigate the NJUPT content iframe (on xs_main.aspx) or fall back to full page navigation.
+ * Preserves the sidebar navigation when on the dashboard page.
+ */
+function navigateNjupt(url: string): void {
+  const contentIframe = findEvalIframe();
+  if (contentIframe) {
+    contentIframe.src = url;
+    return;
+  }
+
+  // Also check for any visible aspx iframe (may not be eval page yet)
+  const iframes = document.querySelectorAll('iframe');
+  for (const iframe of iframes) {
+    try {
+      const src = (iframe as HTMLIFrameElement).src;
+      if (src && src.includes('.aspx')) {
+        (iframe as HTMLIFrameElement).src = url;
+        return;
+      }
+    } catch {}
+  }
+
+  // Fallback: full page navigation
+  window.location.href = url;
+}
+
+/** Extract student ID (xh) from the current page URL or iframe URL */
+function getXh(): string {
+  // Try top page URL first
+  const topXh = new URLSearchParams(window.location.search).get('xh');
+  if (topXh) return topXh;
+
+  // Try iframe URL
+  const iframe = findEvalIframe();
+  if (iframe) {
+    try {
+      const iframeUrl = iframe.contentWindow?.location.href || iframe.src;
+      return new URLSearchParams(new URL(iframeUrl).search).get('xh') || '';
+    } catch {}
+  }
+
+  return '';
+}
 
 // Persist UI state across page reloads
 function loadUiState(): { collapsed: boolean; x: number; y: number } {
@@ -28,11 +66,10 @@ function saveUiState(s: { collapsed: boolean; x: number; y: number }) {
 function StatusBadge({ status }: { status: string }) {
   const m: Record<string, string> = {
     idle: 'bg-gray-100 text-gray-600', running: 'bg-blue-100 text-blue-700',
-    paused: 'bg-yellow-100 text-yellow-700', done: 'bg-green-100 text-green-700',
-    error: 'bg-red-100 text-red-700',
+    done: 'bg-green-100 text-green-700', error: 'bg-red-100 text-red-700',
   };
   const l: Record<string, string> = {
-    idle: '就绪', running: '运行中', paused: '已暂停', done: '已完成', error: '出错',
+    idle: '就绪', running: '运行中', done: '已完成', error: '出错',
   };
   return <span className={`px-2 py-0.5 rounded text-xs font-medium ${m[status] || m.idle}`}>{l[status] || status}</span>;
 }
@@ -52,7 +89,6 @@ export function EvalPanelApp() {
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
 
-  // Persist UI state
   const persistUi = useCallback((c: boolean, p: { x: number; y: number }) => {
     saveUiState({ collapsed: c, x: p.x, y: p.y });
   }, []);
@@ -214,17 +250,13 @@ export function EvalPanelApp() {
           <div className="flex items-center justify-between">
             <h2 className="text-white font-bold text-base">NJUPT 教务助手</h2>
             <div className="flex items-center gap-2">
-              <StatusBadge status={loopStatus} />
+              {isEvalPage && <StatusBadge status={loopStatus} />}
               <button className="text-white/70 hover:text-white text-xs leading-none" onClick={() => { setCollapsed(true); persistUi(true, pos); }}>—</button>
             </div>
           </div>
         </div>
 
         <div className="p-4 space-y-3">
-          <div className="text-gray-500 text-xs">
-            当前页面：<span className={`font-medium ${isEvalPage ? 'text-blue-600' : 'text-gray-400'}`}>{PAGE_LABELS[pageType] || pageType}</span>
-          </div>
-
           {isEvalPage && evalPage && (
             <>
               <div className="text-gray-500 text-xs">课程进度：<span className="font-medium text-gray-700">{progress}</span></div>
@@ -265,17 +297,18 @@ export function EvalPanelApp() {
           {pageType === 'dashboard' && (
             <div className="space-y-2">
               <button className="w-full py-2 rounded font-medium text-sm text-white bg-orange-500 hover:bg-orange-600 transition-colors"
-                onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xs_jsmydpj.aspx?xh=${xh}&gnmkdm=N121801`; }}>前往满意度调查</button>
+                onClick={() => navigateNjupt(`xs_jsmydpj.aspx?xh=${getXh()}&gnmkdm=N121801`)}>前往满意度调查</button>
               <button className="w-full py-2 rounded font-medium text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xsjxpj.aspx?xh=${xh}&gnmkdm=N12141`; }}>前往教学评价</button>
+                onClick={() => navigateNjupt(`xsjxpj.aspx?xh=${getXh()}&gnmkdm=N12141`)}>前往教学评价</button>
               <button className="w-full py-2 rounded font-medium text-sm text-white bg-green-600 hover:bg-green-700 transition-colors"
-                onClick={() => { const xh = new URLSearchParams(window.location.search).get('xh') || ''; window.location.href = `xskbcx.aspx?xh=${xh}&gnmkdm=N121603`; }}>前往学生课表</button>
+                onClick={() => navigateNjupt(`xskbcx.aspx?xh=${getXh()}&gnmkdm=N121603`)}>前往学生课表</button>
+              <button className="w-full py-2 rounded font-medium text-sm text-white bg-teal-600 hover:bg-teal-700 transition-colors"
+                onClick={() => navigateNjupt(`xscj_gc.aspx?xh=${getXh()}&gnmkdm=N121605`)}>前往成绩查询</button>
             </div>
           )}
 
           {pageType === 'schedule' && <ScheduleExporter />}
-
-          {pageType === 'unknown' && <div className="text-xs text-gray-400 text-center">请导航至教务系统页面</div>}
+          {pageType === 'grade' && <GradeExporter />}
         </div>
       </div>
     </div>

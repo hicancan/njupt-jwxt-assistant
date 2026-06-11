@@ -1,104 +1,144 @@
-import { useState, useCallback, useEffect } from 'react';
-import { parseSchedule } from './parser';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { parseScheduleData } from './parser';
 import { generateICS } from './ics';
-import { useEvalStore } from '../content/store';
+import { exportJSON, exportMarkdown } from './exporter';
 import { getEvalDocument } from '../content/dom-analyzer';
 
-function getDefaultDate(): string {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  return (month >= 2 && month <= 7) ? `${now.getFullYear()}-02-17` : `${month >= 8 ? now.getFullYear() : now.getFullYear() - 1}-09-02`;
+/** Nth Monday of a given month (1-based). */
+function nthMonday(year: number, month: number, n: number): Date {
+  const first = new Date(year, month - 1, 1);
+  const offset = first.getDay() <= 1 ? 1 - first.getDay() : 8 - first.getDay();
+  return new Date(year, month - 1, 1 + offset + (n - 1) * 7);
 }
 
-export function ScheduleExporter() {
-  const settings = useEvalStore((s) => s.settings);
-  const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [dateInput, setDateInput] = useState('');
+/**
+ * NJUPT calendar: Semester 1 → 2nd Monday of Sep, Semester 2 → 1st Monday of Mar.
+ */
+function getDefaultDate(year: string, semester: string): string {
+  const [startYear, endYear] = year.split('-').map(Number);
+  if (!startYear || !endYear) return new Date().getFullYear() + '-09-01';
 
-  // Load saved startDate from chrome.storage on mount
+  const d = semester === '1' ? nthMonday(startYear, 9, 2) : nthMonday(endYear, 3, 1);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function dateKey(xh: string, year: string, sem: string): string {
+  return `njupt-schedule:startDate:${xh}:${year}:${sem}`;
+}
+
+type ExportFormat = 'ics' | 'json' | 'markdown';
+const DAYS = ['日', '一', '二', '三', '四', '五', '六'];
+const BTN = 'py-2 rounded font-medium text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
+
+export function ScheduleExporter() {
+  const [loading, setLoading] = useState(false);
+  const [dateInput, setDateInput] = useState('');
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // On mount: load saved date for current student+semester, or algorithm default
   useEffect(() => {
-    (async () => {
-      const raw = await chrome.storage.local.get(['njupt-schedule:startDate']);
-      const saved = raw['njupt-schedule:startDate'] as string | undefined;
-      if (!saved) {
-        setDateInput(getDefaultDate());
-        setShowModal(true);
-      }
-    })();
+    const data = parseScheduleData(getEvalDocument());
+    const key = dateKey(data.studentInfo.xh, data.semesterInfo.year, data.semesterInfo.semester);
+    const def = getDefaultDate(data.semesterInfo.year, data.semesterInfo.semester);
+
+    chrome.storage.local.get([key]).then(raw => {
+      setDateInput((raw[key] as string) || def);
+    });
   }, []);
 
-  const doExport = useCallback((startDate: string) => {
-    try {
-      const doc = getEvalDocument();
-      const courses = parseSchedule(doc);
-      if (courses.length === 0) {
-        alert('未识别到课程，请确认当前页面有课表表格。');
-        return;
-      }
-      const ics = generateICS(courses, startDate);
-      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'njupt_schedule.ics';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
-      // Save startDate for next time
-      chrome.storage.local.set({ 'njupt-schedule:startDate': startDate });
+  const download = useCallback((content: string, file: string, mime: string) => {
+    const b = new Blob([content], { type: mime });
+    const u = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href = u; a.download = file;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(u);
+  }, []);
+
+  const persist = useCallback((d: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const data = parseScheduleData(getEvalDocument());
+    const key = dateKey(data.studentInfo.xh, data.semesterInfo.year, data.semesterInfo.semester);
+    chrome.storage.local.set({ [key]: d });
+    setDateInput(d);
+  }, []);
+
+  const resetDefault = useCallback(() => {
+    const data = parseScheduleData(getEvalDocument());
+    const def = getDefaultDate(data.semesterInfo.year, data.semesterInfo.semester);
+    const key = dateKey(data.studentInfo.xh, data.semesterInfo.year, data.semesterInfo.semester);
+    chrome.storage.local.remove([key]);
+    setDateInput(def);
+  }, []);
+
+  const doExport = useCallback((date: string, fmt: ExportFormat) => {
+    try {
+      const data = parseScheduleData(getEvalDocument());
+      if (data.courses.length === 0 && fmt !== 'json') { alert('未识别到课程'); return; }
+
+      const sfx = data.semesterInfo.year ? `_${data.semesterInfo.year}_${data.semesterInfo.semester}` : '';
+
+      const [content, file, mime] = fmt === 'ics'
+        ? [generateICS(data.courses, date), `njupt_schedule${sfx}.ics`, 'text/calendar;charset=utf-8']
+        : fmt === 'json'
+        ? [exportJSON(data), `njupt_schedule${sfx}.json`, 'application/json;charset=utf-8']
+        : [exportMarkdown(data, date), `njupt_schedule${sfx}.md`, 'text/markdown;charset=utf-8'];
+
+      download(content, file, mime);
+
+      const key = dateKey(data.studentInfo.xh, data.semesterInfo.year, data.semesterInfo.semester);
+      chrome.storage.local.set({ [key]: date });
     } catch (e) {
       alert('导出失败: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [download]);
 
-  const handleExport = useCallback(async () => {
+  const handleExport = (fmt: ExportFormat) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) { alert('请设置有效的学期开始日期'); return; }
     setLoading(true);
-    const saved = await chrome.storage.local.get(['njupt-schedule:startDate']);
-    const startDate = saved['njupt-schedule:startDate'] as string | undefined;
-    if (!startDate) {
-      setDateInput(getDefaultDate());
-      setShowModal(true);
-      setLoading(false);
-      return;
-    }
-    doExport(startDate);
-  }, [doExport]);
+    doExport(dateInput, fmt);
+  };
 
-  const handleDateConfirm = useCallback(() => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-      alert('日期格式不正确，请使用 YYYY-MM-DD 格式');
-      return;
-    }
-    setShowModal(false);
-    setLoading(true);
-    doExport(dateInput);
-  }, [dateInput, doExport]);
+  const d = new Date(dateInput + 'T00:00:00');
+  const day = isNaN(d.getTime()) ? '' : ` 周${DAYS[d.getDay()]}`;
 
   return (
-    <>
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100000]" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md mx-4 border-2 border-blue-200" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-2">设置学期开始日期</h3>
-            <p className="text-gray-500 text-sm mb-4">请输入本学期<strong>第1周周一</strong>的日期</p>
-            <input type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-lg mb-4 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none" />
-            <div className="flex gap-3">
-              <button onClick={handleDateConfirm} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-medium">确认导出</button>
-              <button onClick={() => setShowModal(false)} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-medium">取消</button>
-            </div>
-          </div>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 rounded p-2">
+        <span className="text-gray-400">学期开始：</span>
+        <div className="flex items-center gap-1">
+          {editing ? (
+            <input ref={inputRef} type="date" value={dateInput}
+              onChange={e => setDateInput(e.target.value)}
+              onBlur={() => { persist(dateInput); setEditing(false); }}
+              onKeyDown={e => { if (e.key === 'Enter') { persist(dateInput); setEditing(false); } if (e.key === 'Escape') setEditing(false); }}
+              onMouseDown={e => e.stopPropagation()}
+              className="text-xs border border-blue-300 rounded px-1 py-0.5 focus:outline-none focus:border-blue-400 w-28" />
+          ) : (
+            <span className="font-medium text-gray-600 cursor-pointer hover:text-blue-600 border-b border-dashed border-gray-300"
+              onClick={() => setEditing(true)} onMouseDown={e => e.stopPropagation()}>
+              {dateInput}{day}
+            </span>
+          )}
+          <button onClick={resetDefault} onMouseDown={e => e.stopPropagation()}
+            className="text-gray-400 hover:text-blue-500 text-xs" title="恢复为校历默认日期">↺</button>
         </div>
-      )}
-      <button onClick={handleExport} disabled={loading}
-        className="w-full py-2 rounded font-medium text-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-        {loading ? '导出中...' : '导出课表 ICS'}
-      </button>
-    </>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => handleExport('ics')} disabled={loading} className={`flex-1 ${BTN} bg-green-600 hover:bg-green-700`}>
+          {loading ? '导出中...' : '导出 ICS'}
+        </button>
+        <button onClick={() => handleExport('json')} disabled={loading} className={`flex-1 ${BTN} bg-blue-600 hover:bg-blue-700`}>JSON</button>
+        <button onClick={() => handleExport('markdown')} disabled={loading} className={`flex-1 ${BTN} bg-purple-600 hover:bg-purple-700`}>MD</button>
+      </div>
+    </div>
   );
 }

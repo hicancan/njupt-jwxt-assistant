@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Page types the extension recognizes */
-export type PageType = 'satisfaction' | 'teaching-eval' | 'dashboard' | 'schedule' | 'unknown';
+export type PageType = 'satisfaction' | 'teaching-eval' | 'dashboard' | 'schedule' | 'grade' | 'unknown';
 
 /** A single Likert-scale select element on the evaluation page */
 export interface EvalSelect {
@@ -42,7 +42,7 @@ export interface EvalPage {
   hasCommentBox: boolean;
   commentBoxId: string | null;
   saveButtonId: string | null;
-  submitButtonId: string | null;
+  submitButtonId: string | null; // reserved for future auto-submit
 }
 
 /** Persisted settings schema */
@@ -57,12 +57,5 @@ export const DEFAULT_EVAL_SETTINGS: EvalSettings = {
 };
 
 /** Eval loop running state */
-export type LoopStatus = 'idle' | 'running' | 'paused' | 'done' | 'error';
+export type LoopStatus = 'idle' | 'running' | 'done' | 'error';
 
-/** Percentage distribution for Likert scale ratings */
-export interface FillStrategy {
-  /** Index in option array for "best" rating (完全认同 = 1) */
-  bestIdx: number;
-  /** Index in option array for "good" rating (相对认同 = 2) */
-  goodIdx: number;
-}
