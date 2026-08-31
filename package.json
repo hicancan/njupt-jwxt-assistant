@@ -1,13 +1,14 @@
 {
-  "name": "njupt-jwxt-assistant",
+  "name": "njupt-jwxt",
   "displayName": "南邮教务助手",
-  "version": "2.0.0",
-  "description": "南邮正方教务系统增强 — 一键自动评教 (满意度调查 + 教学评价)",
+  "version": "3.0.0",
+  "description": "从南邮教务系统安全采集并导出全校班级课表",
   "private": true,
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
+    "capture:finalize": "vite-node ops/finalize-capture.ts",
     "prepare:wxt": "wxt prepare",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -19,9 +20,9 @@
   "type": "module",
   "dependencies": {
     "react": "19.2.6",
+    "fflate": "0.8.2",
     "react-dom": "19.2.6",
-    "zod": "4.4.3",
-    "zustand": "5.0.13"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.0",
